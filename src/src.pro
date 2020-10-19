@@ -21,6 +21,12 @@ CONFIG(unittest) {
 }
 
 HEADERS += \
+    ImageViewer.h \
+    RemoteCommitsModel.h \
+    RemoteLocalFilesModel.h \
+    RemoteNetwork.h \
+    TableBrowserDock.h \
+    dbstructureqitemviewfacade.h \
     sqlitedb.h \
     MainWindow.h \
     EditIndexDialog.h \
@@ -81,6 +87,12 @@ HEADERS += \
     sql/parser/sqlite3_parser.hpp
 
 SOURCES += \
+    ImageViewer.cpp \
+    RemoteCommitsModel.cpp \
+    RemoteLocalFilesModel.cpp \
+    RemoteNetwork.cpp \
+    TableBrowserDock.cpp \
+    dbstructureqitemviewfacade.cpp \
     sqlitedb.cpp \
     MainWindow.cpp \
     EditIndexDialog.cpp \
@@ -143,6 +155,7 @@ RESOURCES += icons/icons.qrc \
              qdarkstyle/style.qrc
 
 FORMS += \
+    ImageViewer.ui \
     MainWindow.ui \
     EditIndexDialog.ui \
     AboutDialog.ui \
@@ -182,7 +195,9 @@ TRANSLATIONS += \
     translations/sqlb_ko_KR.ts \
     translations/sqlb_tr.ts \
     translations/sqlb_uk_UA.ts \
-    translations/sqlb_it.ts
+    translations/sqlb_it.ts \
+    translations/sqlb_ja.ts \
+    translations/sqlb_nl.ts
 
 # SQLite / SQLCipher switch pieces
 CONFIG(sqlcipher) {
@@ -286,7 +301,7 @@ unix {
     desktop.path = $$DATADIR/applications/
     desktop.files = ../distri/sqlitebrowser.desktop
     INSTALLS += desktop
-    appdata.path = $$DATADIR/appdata/
+    appdata.path = $$DATADIR/metainfo/
     appdata.files = ../distri/sqlitebrowser.desktop.appdata.xml
     INSTALLS += appdata
 }

@@ -5,6 +5,7 @@
 #include "sqlitedb.h"
 #include "Settings.h"
 #include "ExportDataDialog.h"
+#include "FilterTableHeader.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -25,6 +26,7 @@ SqlExecutionArea::SqlExecutionArea(DBBrowserDB& _db, QWidget* parent) :
     model = new SqliteTableModel(db, this);
     ui->tableResult->setModel(model);
     connect(model, &SqliteTableModel::finishedFetch, this, &SqlExecutionArea::fetchedData);
+    connect(ui->tableResult->filterHeader(), &FilterTableHeader::sectionPressed, ui->tableResult, &QTableView::selectColumn);
 
     ui->findFrame->hide();
 
@@ -271,6 +273,8 @@ void SqlExecutionArea::saveFile(const QString& filename)
     // Write to the file
     if(f.write(getSql().toUtf8()) != -1)
     {
+        // Close file now. If we let the destructor close it, we can get change notifications.
+        f.close();
         // Set modified to false so we can get control of unsaved changes when closing.
         ui->editEditor->setModified(false);
 

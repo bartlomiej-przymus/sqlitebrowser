@@ -5,12 +5,13 @@
 #include "PlotDock.h"
 #include "sql/Query.h"
 
-#include <QMap>
 #include <QModelIndex>
 #include <QWidget>
 
 #include <functional>
+#include <map>
 #include <unordered_set>
+#include <vector>
 
 class DBBrowserDB;
 class ExtendedTableWidget;
@@ -25,54 +26,28 @@ class TableBrowser;
 
 struct BrowseDataTableSettings
 {
-    using CondFormatMap = QMap<size_t, std::vector<CondFormat>>;
-    sqlb::Query query;                              // NOTE: We only store the sort order in here (for now)
-    QMap<int, int> columnWidths;
-    QMap<int, QString> filterValues;
+    using CondFormatMap = std::map<size_t, std::vector<CondFormat>>;
+    std::vector<sqlb::SortedColumn> sortColumns;
+    std::map<int, int> columnWidths;
+    std::map<size_t, QString> filterValues;
     CondFormatMap condFormats;
     CondFormatMap rowIdFormats;
-    QMap<int, QString> displayFormats;
+    std::map<size_t, QString> displayFormats;
     bool showRowid;
     QString encoding;
     QString plotXAxis;
-    QMap<QString, PlotDock::PlotSettings> plotYAxes;
+    std::vector<std::map<QString, PlotDock::PlotSettings>> plotYAxes;
     QString unlockViewPk;
-    QMap<int, bool> hiddenColumns;
+    std::map<int, bool> hiddenColumns;
     std::vector<QString> globalFilters;
+    size_t frozenColumns;
 
     BrowseDataTableSettings() :
         showRowid(false),
-        unlockViewPk("_rowid_")
+        plotYAxes({std::map<QString, PlotDock::PlotSettings>(), std::map<QString, PlotDock::PlotSettings>()}),
+        unlockViewPk("_rowid_"),
+        frozenColumns(0)
     {
-    }
-
-    friend QDataStream& operator>>(QDataStream& stream, BrowseDataTableSettings& object)
-    {
-        int sortOrderIndex, sortOrderMode;
-        stream >> sortOrderIndex;
-        stream >> sortOrderMode;
-        object.query.orderBy().emplace_back(sortOrderIndex, sortOrderMode == Qt::AscendingOrder ? sqlb::Ascending : sqlb::Descending);
-        stream >> object.columnWidths;
-        stream >> object.filterValues;
-        stream >> object.displayFormats;
-        stream >> object.showRowid;
-        stream >> object.encoding;
-
-        // Versions pre 3.10.0 didn't store the following information in their project files.
-        // To be absolutely sure that nothing strange happens when we read past the stream for
-        // those cases, check for the end of the stream here.
-        if(stream.atEnd())
-            return stream;
-        stream >> object.plotXAxis;
-        stream >> object.plotYAxes;
-        stream >> object.unlockViewPk;
-
-        // Project files from versions before 3.11.0 didn't have these fields
-        if(stream.atEnd())
-            return stream;
-        stream >> object.hiddenColumns;
-
-        return stream;
     }
 };
 
@@ -81,30 +56,29 @@ class TableBrowser : public QWidget
     Q_OBJECT
 
 public:
-    explicit TableBrowser(QWidget* parent = nullptr);
+    explicit TableBrowser(DBBrowserDB* _db, QWidget* parent = nullptr);
     ~TableBrowser();
-    void init(DBBrowserDB* _db);
     void reset();
+    static void resetSharedSettings();
 
     sqlb::ObjectIdentifier currentlyBrowsedTableName() const;
 
-    QMap<sqlb::ObjectIdentifier, BrowseDataTableSettings> allSettings() const { return m_settings; }
-    BrowseDataTableSettings& settings(const sqlb::ObjectIdentifier& object);
-    void setSettings(const sqlb::ObjectIdentifier& table, const BrowseDataTableSettings& table_settings);
+    static std::map<sqlb::ObjectIdentifier, BrowseDataTableSettings> allSettings() { return m_settings; }
+    static BrowseDataTableSettings& settings(const sqlb::ObjectIdentifier& object);
+    static void setSettings(const sqlb::ObjectIdentifier& table, const BrowseDataTableSettings& table_settings);
 
-    void setStructure(QAbstractItemModel* model, const QString& old_table = QString());
-    void updateStructure();
+    void setStructure(QAbstractItemModel* model, const sqlb::ObjectIdentifier& old_table = sqlb::ObjectIdentifier{});
 
     SqliteTableModel* model() { return m_model; }
 
     QModelIndex currentIndex() const;
 
-    void setDefaultEncoding(const QString& encoding) { m_defaultEncoding = encoding; }
-    QString defaultEncoding() const { return m_defaultEncoding; }
+    static void setDefaultEncoding(const QString& encoding) { m_defaultEncoding = encoding; }
+    static QString defaultEncoding() { return m_defaultEncoding; }
 
 public slots:
     void setEnabled(bool enable);
-    void updateTable();
+    void refresh();
     void clearFilters();
     void reloadSettings();
     void setCurrentTable(const sqlb::ObjectIdentifier& name);
@@ -119,6 +93,9 @@ signals:
     void updatePlot(ExtendedTableWidget* tableWidget, SqliteTableModel* model, BrowseDataTableSettings* settings, bool keepOrResetSelection);
     void createView(std::string sql);
     void requestFileOpen(QString file);
+    void currentTableChanged(sqlb::ObjectIdentifier table);
+    void foreignKeyClicked(sqlb::ObjectIdentifier table, std::string column, QByteArray value);
+    void dataAboutToBeEdited(const QModelIndex& index);
 
 private slots:
     void clear();
@@ -128,9 +105,9 @@ private slots:
     void clearAllCondFormats(size_t column);
     void clearRowIdFormats(const QModelIndex index);
     void editCondFormats(size_t column);
-    void applySettings(const BrowseDataTableSettings& storedData, bool skipFilters = false);
     void enableEditing(bool enable_edit);
-    void showRowidColumn(bool show, bool skipFilters = false);
+    void showRowidColumn(bool show);
+    void freezeColumns(size_t columns);
     void unlockViewEditing(bool unlock, QString pk = QString());
     void hideColumns(int column = -1, bool hide = true);
     void on_actionShowAllColumns_triggered();
@@ -156,9 +133,16 @@ private slots:
     void saveFilterAsView();
     void setTableEncoding(bool forAllTables = false);
     void setDefaultTableEncoding();
+    void fetchedData();
 
 private:
-    void find(const QString& expr, bool forward, bool include_first = false);
+    enum class ReplaceMode
+    {
+        NoReplace,
+        ReplaceNext,
+        ReplaceAll,
+    };
+    void find(const QString& expr, bool forward, bool include_first = false, ReplaceMode replace = ReplaceMode::NoReplace);
 
 private:
     Ui::TableBrowser* ui;
@@ -175,14 +159,21 @@ private:
     /// re-initialized when switching to another table)
     SqliteTableModel* m_model;
 
-    static QMap<sqlb::ObjectIdentifier, BrowseDataTableSettings> m_settings;  // This is static, so settings are shared between instances
+    static std::map<sqlb::ObjectIdentifier, BrowseDataTableSettings> m_settings;  // This is static, so settings are shared between instances
     static QString m_defaultEncoding;
 
     Palette m_condFormatPalette;
+    bool m_adjustRows;
+    bool m_columnsResized;
 
     void modifySingleFormat(const bool isRowIdFormat, const QString& filter, const QModelIndex refIndex,
                             std::function<void(CondFormat&)> changeFunction);
     void modifyFormat(std::function<void(CondFormat&)> changeFunction);
+
+    sqlb::Query buildQuery(const BrowseDataTableSettings& storedData, const sqlb::ObjectIdentifier& tablename) const;
+    void applyModelSettings(const BrowseDataTableSettings& storedData, const sqlb::Query& query);
+    void applyViewportSettings(const BrowseDataTableSettings& storedData, const sqlb::ObjectIdentifier& tablename);
+    void generateFilters();
 };
 
 #endif

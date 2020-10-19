@@ -1,5 +1,5 @@
-project(sqlitebrowser)
 cmake_minimum_required(VERSION 2.8.12.2)
+project(sqlitebrowser)
 
 # BUILD_VERSION is the current date in YYYYMMDD format. It is only
 # used by the nightly version to add the date of the build.
@@ -44,7 +44,7 @@ if(WIN32 AND MSVC)
 	if(CMAKE_CL_64)
 		# Paths for 64-bit windows builds
 		set(OPENSSL_PATH "C:/dev/OpenSSL-Win64" CACHE PATH "OpenSSL Path")
-		set(QT5_PATH "C:/dev/Qt/5.12.5/msvc2017_64" CACHE PATH "Qt5 Path")
+		set(QT5_PATH "C:/dev/Qt/5.12.8/5.12.8/msvc2017_64" CACHE PATH "Qt5 Path")
 
                 # Choose between SQLCipher or SQLite, depending whether
                 # -Dsqlcipher=1 is passed on the command line
@@ -56,7 +56,7 @@ if(WIN32 AND MSVC)
 	else()
 		# Paths for 32-bit windows builds
 		set(OPENSSL_PATH "C:/dev/OpenSSL-Win32" CACHE PATH "OpenSSL Path")
-		set(QT5_PATH "C:/dev/Qt/5.7/msvc2015" CACHE PATH "Qt5 Path")
+		set(QT5_PATH "C:/dev/Qt/5.12.8/5.12.8/msvc2017" CACHE PATH "Qt5 Path")
 
                 # Choose between SQLCipher or SQLite, depending whether
                 # -Dsqlcipher=1 is passed on the command line
@@ -75,12 +75,12 @@ if(NOT FORCE_INTERNAL_QSCINTILLA)
     find_package(QScintilla 2.8.10 QUIET)
 endif()
 if(FORCE_INTERNAL_QCUSTOMPLOT)
-    set(QCUSTOMPLOT_FOUND FALSE)
+    set(QCustomPlot_FOUND FALSE)
 else()
     find_package(QCustomPlot)
 endif()
 if(FORCE_INTERNAL_QHEXEDIT)
-    set(QHEXEDIT_FOUND FALSE)
+    set(QHexEdit_FOUND FALSE)
 else()
     find_package(QHexEdit)
 endif()
@@ -90,15 +90,15 @@ if(NOT QSCINTILLA_FOUND)
     set(QSCINTILLA_DIR libs/qscintilla/Qt4Qt5)
     add_subdirectory(${QSCINTILLA_DIR})
 endif()
-if(NOT QHEXEDIT_FOUND)
-    set(QHEXEDIT_DIR libs/qhexedit)
-    set(QHEXEDIT_INCL_DIR ${QHEXEDIT_DIR}/src)
-    add_subdirectory(${QHEXEDIT_DIR})
+if(NOT QHexEdit_FOUND)
+    set(QHexEdit_DIR libs/qhexedit)
+    set(QHexEdit_INCL_DIR ${QHexEdit_DIR}/src)
+    add_subdirectory(${QHexEdit_DIR})
 endif()
 add_subdirectory(${JSON_DIR})
-if(NOT QCUSTOMPLOT_FOUND)
-    set(QCUSTOMPLOT_DIR libs/qcustomplot-source)
-    add_subdirectory(${QCUSTOMPLOT_DIR})
+if(NOT QCustomPlot_FOUND)
+    set(QCustomPlot_DIR libs/qcustomplot-source)
+    add_subdirectory(${QCustomPlot_DIR})
 endif()
 
 set(CMAKE_AUTOMOC ON)
@@ -145,6 +145,7 @@ set(SQLB_MOC_HDR
 	src/sqltextedit.h
 	src/docktextedit.h
 	src/DbStructureModel.h
+	src/dbstructureqitemviewfacade.h
 	src/Application.h
 	src/CipherDialog.h
 	src/ExportSqlDialog.h
@@ -170,6 +171,11 @@ set(SQLB_MOC_HDR
 	src/ProxyDialog.h
 	src/SelectItemsPopup.h
 	src/TableBrowser.h
+	src/ImageViewer.h
+	src/RemoteLocalFilesModel.h
+	src/RemoteCommitsModel.h
+	src/RemoteNetwork.h
+	src/TableBrowserDock.h
 )
 
 set(SQLB_SRC
@@ -197,6 +203,7 @@ set(SQLB_SRC
 	src/docktextedit.cpp
 	src/csvparser.cpp
 	src/DbStructureModel.cpp
+	src/dbstructureqitemviewfacade.cpp
 	src/main.cpp
 	src/Application.cpp
 	src/CipherDialog.cpp
@@ -228,6 +235,11 @@ set(SQLB_SRC
 	src/sql/parser/ParserDriver.cpp
 	src/sql/parser/sqlite3_lexer.cpp
 	src/sql/parser/sqlite3_parser.cpp
+	src/ImageViewer.cpp
+	src/RemoteLocalFilesModel.cpp
+	src/RemoteCommitsModel.cpp
+	src/RemoteNetwork.cpp
+	src/TableBrowserDock.cpp
 )
 
 set(SQLB_FORMS
@@ -254,6 +266,7 @@ set(SQLB_FORMS
 	src/ProxyDialog.ui
 	src/SelectItemsPopup.ui
 	src/TableBrowser.ui
+	src/ImageViewer.ui
 )
 
 set(SQLB_RESOURCES
@@ -286,6 +299,8 @@ set(SQLB_TSS
 	"${CMAKE_SOURCE_DIR}/src/translations/sqlb_tr.ts"
 	"${CMAKE_SOURCE_DIR}/src/translations/sqlb_uk_UA.ts"
 	"${CMAKE_SOURCE_DIR}/src/translations/sqlb_it.ts"
+	"${CMAKE_SOURCE_DIR}/src/translations/sqlb_ja.ts"
+	"${CMAKE_SOURCE_DIR}/src/translations/sqlb_nl.ts"
 )
 
 # Windows image format plugin files
@@ -348,7 +363,7 @@ else()
 	set(LPTHREAD pthread)
 endif(WIN32)
 
-#enable version check for MacOS
+#enable version check for macOS
 if(APPLE)
 	add_definitions(-DCHECKNEWVERSION)
 endif(APPLE)
@@ -385,15 +400,15 @@ include_directories(
 		${JSON_DIR}
 		${ADDITIONAL_INCLUDE_PATHS}
 		src)
-if(QHEXEDIT_FOUND)
-    include_directories(${QHEXEDIT_INCLUDE_DIR})
+if(QHexEdit_FOUND)
+    include_directories(${QHexEdit_INCLUDE_DIR})
 else()
-    include_directories(${QHEXEDIT_INCL_DIR})
+    include_directories(${QHexEdit_INCL_DIR})
 endif()
-if(QCUSTOMPLOT_FOUND)
-    include_directories(${QCUSTOMPLOT_INCLUDE_DIR})
+if(QCustomPlot_FOUND)
+    include_directories(${QCustomPlot_INCLUDE_DIR})
 else()
-    include_directories(${QCUSTOMPLOT_DIR})
+    include_directories(${QCustomPlot_DIR})
 endif()
 if(QSCINTILLA_FOUND)
     include_directories(${QSCINTILLA_INCLUDE_DIR})
@@ -419,21 +434,21 @@ if (ALL_WARNINGS AND CMAKE_COMPILER_IS_GNUCC)
     endif()
 endif()
 
-if(NOT QHEXEDIT_FOUND)
+if(NOT QHexEdit_FOUND)
     add_dependencies(${PROJECT_NAME} qhexedit)
 endif()
-if(NOT QCUSTOMPLOT_FOUND)
+if(NOT QCustomPlot_FOUND)
     add_dependencies(${PROJECT_NAME} qcustomplot)
 endif()
 if(NOT QSCINTILLA_FOUND)
     add_dependencies(${PROJECT_NAME} qscintilla2)
 endif()
 
-if(NOT QHEXEDIT_FOUND)
-    link_directories("${CMAKE_CURRENT_BINARY_DIR}/${QHEXEDIT_DIR}")
+if(NOT QHexEdit_FOUND)
+    link_directories("${CMAKE_CURRENT_BINARY_DIR}/${QHexEdit_DIR}")
 endif()
-if(NOT QCUSTOMPLOT_FOUND)
-    link_directories("${CMAKE_CURRENT_BINARY_DIR}/${QCUSTOMPLOT_DIR}")
+if(NOT QCustomPlot_FOUND)
+    link_directories("${CMAKE_CURRENT_BINARY_DIR}/${QCustomPlot_DIR}")
 endif()
 if(NOT QSCINTILLA_FOUND)
     link_directories("${CMAKE_CURRENT_BINARY_DIR}/${QSCINTILLA_DIR}")
@@ -447,13 +462,13 @@ target_link_libraries(${PROJECT_NAME}
     ${WIN32_STATIC_LINK}
     ${LIBSQLITE}
     ${ADDITIONAL_LIBS})
-if(QHEXEDIT_FOUND)
-    target_link_libraries(${PROJECT_NAME} ${QHEXEDIT_LIBRARIES})
+if(QHexEdit_FOUND)
+    target_link_libraries(${PROJECT_NAME} ${QHexEdit_LIBRARIES})
 else()
     target_link_libraries(${PROJECT_NAME} qhexedit)
 endif()
-if(QCUSTOMPLOT_FOUND)
-    target_link_libraries(${PROJECT_NAME} ${QCUSTOMPLOT_LIBRARIES})
+if(QCustomPlot_FOUND)
+    target_link_libraries(${PROJECT_NAME} ${QCustomPlot_LIBRARIES})
 else()
     target_link_libraries(${PROJECT_NAME} qcustomplot)
 endif()
@@ -492,11 +507,15 @@ if(UNIX)
 	install(FILES src/icons/${PROJECT_NAME}.png
 		DESTINATION share/icons/hicolor/256x256/apps/)
 
+	install(FILES images/logo.svg
+		DESTINATION share/icons/hicolor/scalable/apps/
+		RENAME ${PROJECT_NAME}.svg)
+
 	install(FILES distri/${PROJECT_NAME}.desktop
 		DESTINATION share/applications/)
 
 	install(FILES distri/${PROJECT_NAME}.desktop.appdata.xml
-		DESTINATION share/appdata/)
+		DESTINATION share/metainfo/)
 endif(UNIX)
 
 if(WIN32 AND MSVC)
@@ -513,6 +532,7 @@ if(WIN32 AND MSVC)
 			${QT5_BIN_PATH}/Qt5PrintSupportd.dll
 			${QT5_BIN_PATH}/Qt5Widgetsd.dll
 			${QT5_BIN_PATH}/Qt5Concurrentd.dll
+			${QT5_BIN_PATH}/Qt5Svgd.dll
 		DESTINATION "/"
 		CONFIGURATIONS Debug)
 	# The Qt5 Release configuration files don't have a postfix
@@ -523,6 +543,7 @@ if(WIN32 AND MSVC)
 			${QT5_BIN_PATH}/Qt5PrintSupport.dll
 			${QT5_BIN_PATH}/Qt5Widgets.dll
 			${QT5_BIN_PATH}/Qt5Concurrent.dll
+			${QT5_BIN_PATH}/Qt5Svg.dll
 		DESTINATION "/"
 		CONFIGURATIONS Release)
 	# The files below are common to all configurations

@@ -96,7 +96,9 @@ bool RunSql::executeNextStatement()
     if(!structure_updated && (query_type == AlterStatement ||
                               query_type == CreateStatement ||
                               query_type == DropStatement ||
-                              query_type == RollbackStatement))
+                              query_type == RollbackStatement ||
+                              query_type == AttachStatement ||
+                              query_type == DetachStatement))
         structure_updated = true;
 
     // Check whether this is trying to set a pragma or to vacuum the database
@@ -126,7 +128,7 @@ bool RunSql::executeNextStatement()
         // We're not trying to set a pragma or to vacuum the database. In this case make sure a savepoint has been created in order to avoid committing
         // all changes to the database immediately. Don't set more than one savepoint.
 
-        if(!savepoint_created)
+        if(!savepoint_created && !db.readOnly())
         {
             // We have to start a transaction before we create the prepared statement otherwise every executed
             // statement will get committed after the prepared statement gets finalized
@@ -157,6 +159,7 @@ bool RunSql::executeNextStatement()
     queries_left_to_execute = QByteArray(tail);
     lk.unlock();
 
+    QString error;
     if (sql3status == SQLITE_OK)
     {
         sql3status = sqlite3_step(vm);
@@ -227,18 +230,10 @@ bool RunSql::executeNextStatement()
         case SQLITE_MISUSE:
             break;
         default:
-            QString error = QString::fromUtf8(sqlite3_errmsg(pDb.get()));
-            releaseDbAccess();
-            emit statementErrored(error, execute_current_position, end_of_current_statement_position);
-            stopExecution();
-            return false;
+            error = QString::fromUtf8(sqlite3_errmsg(pDb.get()));
         }
     } else {
-        QString error = QString::fromUtf8(sqlite3_errmsg(pDb.get()));
-        releaseDbAccess();
-        emit statementErrored(error, execute_current_position, end_of_current_statement_position);
-        stopExecution();
-        return false;
+        error = QString::fromUtf8(sqlite3_errmsg(pDb.get()));
     }
 
     // Release the database
@@ -256,6 +251,12 @@ bool RunSql::executeNextStatement()
         savepoint_created = false;
     }
 
+    if(!error.isEmpty())
+    {
+        emit statementErrored(error, execute_current_position, end_of_current_statement_position);
+        stopExecution();
+        return false;
+    }
     // Update the start position for the next statement and check if we are at
     // the end of the part we want to execute. If so, stop the execution now.
     execute_current_position = end_of_current_statement_position;

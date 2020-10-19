@@ -217,8 +217,11 @@ void ImportCsvDialog::accept()
 void ImportCsvDialog::updatePreview()
 {
     // Show/hide custom quote/separator input fields
-    ui->editCustomQuote->setVisible(ui->comboQuote->currentIndex() == ui->comboQuote->count()-1);
-    ui->editCustomSeparator->setVisible(ui->comboSeparator->currentIndex() == ui->comboSeparator->count()-1);
+    ui->editCustomQuote->setVisible(ui->comboQuote->currentIndex() == ui->comboQuote->count() - OtherPrintable);
+    ui->editCustomSeparator->setVisible(ui->comboSeparator->currentIndex() == ui->comboSeparator->count() - OtherPrintable);
+    ui->spinBoxQuote->setVisible(ui->comboQuote->currentIndex() == ui->comboQuote->count() - OtherCode);
+    ui->spinBoxSeparator->setVisible(ui->comboSeparator->currentIndex() == ui->comboSeparator->count() - OtherCode);
+
     ui->editCustomEncoding->setVisible(ui->comboEncoding->currentIndex() == ui->comboEncoding->count()-1);
 
     // Reset preview widget
@@ -350,7 +353,7 @@ void ImportCsvDialog::matchSimilar()
                                              });
             if (matchingHeader) {
                 item->setCheckState(Qt::Checked);
-                item->setBackgroundColor(Qt::green);
+                item->setBackground(Qt::green);
             }
         }
         else
@@ -397,12 +400,12 @@ sqlb::FieldVector ImportCsvDialog::generateFieldList(const QString& filename) co
             {
                 // Take field name from CSV and remove invalid characters
                 fieldname = std::string(rowData.fields[i].data, rowData.fields[i].data_length);
-                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), '`'));
-                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), ' '));
-                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), '"'));
-                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), '\''));
-                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), ','));
-                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), ';'));
+                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), '`'), fieldname.end());
+                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), ' '), fieldname.end());
+                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), '"'), fieldname.end());
+                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), '\''), fieldname.end());
+                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), ','), fieldname.end());
+                fieldname.erase(std::remove(fieldname.begin(), fieldname.end(), ';'), fieldname.end());
             }
 
             // If we don't have a field name by now, generate one
@@ -671,17 +674,19 @@ bool ImportCsvDialog::importCsv(const QString& fileName, const QString& name)
         // Some error occurred or the user cancelled the action
 
         // Rollback the entire import. If the action was cancelled, don't show an error message. If it errored, show an error message.
-        if(result == CSVParser::ParserResult::ParserResultCancelled)
+        QString message;
+        if(result == CSVParser::ParserResult::ParserResultError)
         {
-            sqlite3_finalize(stmt);
-            rollback(this, pdb, &pDb, restorepointName, 0, QString());
-            return false;
-        } else {
             QString error(sqlite3_errmsg(pDb.get()));
-            sqlite3_finalize(stmt);
-            rollback(this, pdb, &pDb, restorepointName, lastRowNum, tr("Inserting row failed: %1").arg(error));
-            return false;
+            message = tr("Inserting row failed: %1").arg(error);
+        } else if(result == CSVParser::ParserResult::ParserResultUnexpectedEOF) {
+            message = tr("Unexpected end of file. Please make sure that you have configured the correct quote characters and "
+                         "the file is not malformed.");
         }
+
+        sqlite3_finalize(stmt);
+        rollback(this, pdb, &pDb, restorepointName, lastRowNum, message);
+        return false;
     }
 
     // Clean up prepared statement
@@ -702,10 +707,18 @@ void ImportCsvDialog::setQuoteChar(QChar c)
 {
     QComboBox* combo = ui->comboQuote;
     int index = combo->findText(QString(c));
+    ui->spinBoxQuote->setValue(c.unicode());
     if(index == -1)
     {
-        combo->setCurrentIndex(combo->count() - 1);
-        ui->editCustomQuote->setText(QString(c));
+        if(c.isPrint())
+        {
+            combo->setCurrentIndex(combo->count() - OtherPrintable);
+            ui->editCustomQuote->setText(QString(c));
+        }
+        else
+        {
+            combo->setCurrentIndex(combo->count() - OtherCode);
+        }
     }
     else
     {
@@ -718,8 +731,10 @@ QChar ImportCsvDialog::currentQuoteChar() const
     QString value;
 
     // The last item in the combobox is the 'Other' item; if it is selected return the text of the line edit field instead
-    if(ui->comboQuote->currentIndex() == ui->comboQuote->count()-1)
+    if(ui->comboQuote->currentIndex() == ui->comboQuote->count() - OtherPrintable)
         value = ui->editCustomQuote->text().length() ? ui->editCustomQuote->text() : "";
+    else if(ui->comboQuote->currentIndex() == ui->comboQuote->count() - OtherCode)
+        value = QString(QChar(ui->spinBoxQuote->value()));
     else if(ui->comboQuote->currentText().length())
         value = ui->comboQuote->currentText();
 
@@ -731,10 +746,18 @@ void ImportCsvDialog::setSeparatorChar(QChar c)
     QComboBox* combo = ui->comboSeparator;
     QString sText = c == '\t' ? QString("Tab") : QString(c);
     int index = combo->findText(sText);
+    ui->spinBoxSeparator->setValue(c.unicode());
     if(index == -1)
     {
-        combo->setCurrentIndex(combo->count() - 1);
-        ui->editCustomSeparator->setText(QString(c));
+        if(c.isPrint())
+        {
+            combo->setCurrentIndex(combo->count() - OtherPrintable);
+            ui->editCustomSeparator->setText(QString(c));
+        }
+        else
+        {
+            combo->setCurrentIndex(combo->count() - OtherCode);
+        }
     }
     else
     {
@@ -746,9 +769,12 @@ QChar ImportCsvDialog::currentSeparatorChar() const
 {
     QString value;
 
-    // The last item in the combobox is the 'Other' item; if it is selected return the text of the line edit field instead
-    if(ui->comboSeparator->currentIndex() == ui->comboSeparator->count()-1 || ui->comboSeparator->currentText().isEmpty())
+    // The last options in the combobox are the 'Other (*)' items;
+    // if one of them is selected return the text or code of the corresponding field instead
+    if(ui->comboSeparator->currentIndex() == ui->comboSeparator->count() - OtherPrintable)
         value = ui->editCustomSeparator->text().length() ? ui->editCustomSeparator->text() : "";
+    else if(ui->comboSeparator->currentIndex() == ui->comboSeparator->count() - OtherCode)
+        value = QString(QChar(ui->spinBoxSeparator->value()));
     else
         value = ui->comboSeparator->currentText() == tr("Tab") ? "\t" : ui->comboSeparator->currentText();
 

@@ -24,7 +24,7 @@ void SqlUiLexer::setupAutoCompletion()
     keywordPatterns
             // Keywords
             << "ABORT" << "ACTION" << "ADD" << "AFTER" << "ALL"
-            << "ALTER" << "ANALYZE" << "AND" << "AS" << "ASC"
+            << "ALTER" << "ALWAYS" << "ANALYZE" << "AND" << "AS" << "ASC"
             << "ATTACH" << "AUTOINCREMENT" << "BEFORE" << "BEGIN" << "BETWEEN"
             << "BY" << "CASCADE" << "CASE" << "CAST" << "CHECK"
             << "COLLATE" << "COLUMN" << "COMMIT" << "CONFLICT" << "CONSTRAINT"
@@ -33,7 +33,7 @@ void SqlUiLexer::setupAutoCompletion()
             << "DESC" << "DETACH" << "DISTINCT" << "DO" << "DROP" << "EACH"
             << "ELSE" << "END" << "ESCAPE" << "EXCEPT" << "EXCLUSIVE"
             << "EXISTS" << "EXPLAIN" << "FAIL" << "FILTER" << "FOLLOWING" << "FOR" << "FOREIGN"
-            << "FROM" << "FULL" << "GLOB" << "GROUP" << "HAVING"
+            << "FROM" << "FULL" << "GENERATED" << "GLOB" << "GROUP" << "HAVING"
             << "IF" << "IGNORE" << "IMMEDIATE" << "IN" << "INDEX"
             << "INDEXED" << "INITIALLY" << "INNER" << "INSERT" << "INSTEAD"
             << "INTERSECT" << "INTO" << "IS" << "ISNULL" << "JOIN"
@@ -43,7 +43,7 @@ void SqlUiLexer::setupAutoCompletion()
             << "OUTER" << "OVER" << "PARTITION" << "PLAN" << "PRAGMA" << "PRECEDING" << "PRIMARY" << "QUERY"
             << "RAISE" << "RANGE" << "RECURSIVE" << "REFERENCES" << "REGEXP" << "REINDEX" << "RELEASE"
             << "RENAME" << "REPLACE" << "RESTRICT" << "RIGHT" << "ROLLBACK"
-            << "ROWID" << "ROW" << "ROWS" << "SAVEPOINT" << "SELECT" << "SET" << "TABLE"
+            << "ROWID" << "ROW" << "ROWS" << "SAVEPOINT" << "SELECT" << "SET" << "STORED" << "TABLE"
             << "TEMP" << "TEMPORARY" << "THEN" << "TO" << "TRANSACTION"
             << "TRIGGER" << "UNBOUNDED" << "UNION" << "UNIQUE" << "UPDATE" << "USING"
             << "VACUUM" << "VALUES" << "VIEW" << "VIRTUAL" << "WHEN"
@@ -71,6 +71,7 @@ void SqlUiLexer::setupAutoCompletion()
             << "ifnull" + tr("(X,Y) The ifnull() function returns a copy of its first non-NULL argument, or NULL if both arguments are NULL.")
             << "instr" + tr("(X,Y) The instr(X,Y) function finds the first occurrence of string Y within string X and returns the number of prior characters plus 1, or 0 if Y is nowhere found within X.")
             << "hex" + tr("(X) The hex() function interprets its argument as a BLOB and returns a string which is the upper-case hexadecimal rendering of the content of that blob.")
+            << "iif" + tr("(X,Y,Z) The iif(X,Y,Z) function returns the value Y if X is true, and Z otherwise.")
             << "last_insert_rowid" + tr("() The last_insert_rowid() function returns the ROWID of the last row insert from the database connection which invoked the function.")
             << "length" + tr("(X) For a string value X, the length(X) function returns the number of characters (not bytes) in X prior to the first NUL character.")
             << "like" + tr("(X,Y) The like() function is used to implement the \"Y LIKE X\" expression.")

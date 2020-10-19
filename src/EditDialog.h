@@ -6,6 +6,7 @@
 
 class QHexEdit;
 class DockTextEdit;
+class ImageViewer;
 
 namespace Ui {
 class EditDialog;
@@ -20,6 +21,7 @@ public:
     ~EditDialog() override;
 
     void setCurrentIndex(const QModelIndex& idx);
+    QPersistentModelIndex currentIndex() const { return m_currentIndex; }
 
 public slots:
     void setFocus();
@@ -31,7 +33,7 @@ protected:
     void showEvent(QShowEvent* ev) override;
 
 private slots:
-    void importData();
+    void importData(bool asLink = false);
     void exportData();
     void setNull();
     void updateApplyButton();
@@ -44,18 +46,19 @@ private slots:
     void updateCellInfoAndMode(const QByteArray& bArrdata);
     void setMustIndentAndCompact(bool enable);
     void openPrintDialog();
-    void openPrintImageDialog();
     void copyHexAscii();
     void setWordWrapping(bool value);
 
 signals:
     void recordTextUpdated(const QPersistentModelIndex& idx, const QByteArray& bArrdata, bool isBlob);
+    void requestUrlOrFileOpen(const QString& urlString);
 
 private:
     Ui::EditDialog* ui;
     QHexEdit* hexEdit;
     DockTextEdit* sciEdit;
-    QPersistentModelIndex currentIndex;
+    ImageViewer* imageEdit;
+    QPersistentModelIndex m_currentIndex;
     int dataSource;
     int dataType;
     bool isReadOnly;
@@ -88,7 +91,7 @@ private:
         TextEditor = 0,
         RtlTextEditor = 1,
         HexEditor = 2,
-        ImageViewer = 3,
+        ImageEditor = 3,
         // Modes in the Scintilla editor:
         JsonEditor = 4,
         XmlEditor = 5
@@ -98,6 +101,7 @@ private:
     bool promptInvalidData(const QString& data_type, const QString& errorString);
     void setDataInBuffer(const QByteArray& bArrdata, DataSources source);
     void setStackCurrentIndex(int editMode);
+    void openDataWithExternal();
 };
 
 #endif

@@ -21,7 +21,12 @@ public:
 
     MainWindow* mainWindow() { return m_mainWindow; }
 
+    // DB4S version number as string
     static QString versionString();
+    // Version of DB4S and dependencies as string
+    static QString versionInformation();
+
+    static void reloadSettings();
 
 protected:
     bool event(QEvent* event) override;

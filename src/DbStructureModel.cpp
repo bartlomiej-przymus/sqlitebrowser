@@ -52,7 +52,7 @@ QVariant DbStructureModel::data(const QModelIndex& index, int role) const
         if(index.column() == ColumnName && item->parent() == browsablesRootItem)
             return QString::fromStdString(sqlb::ObjectIdentifier(item->text(ColumnSchema).toStdString(), item->text(ColumnName).toStdString()).toDisplayString());
         else
-            return Settings::getValue("db", "hideschemalinebreaks").toBool() ? item->text(index.column()).replace("\n", " ").simplified() : item->text(index.column());
+            return Settings::getValue("db", "hideschemalinebreaks").toBool() ? item->text(index.column()).simplified() : item->text(index.column());
     case Qt::EditRole:
         return item->text(index.column());
     case Qt::ToolTipRole: {
@@ -152,7 +152,6 @@ void DbStructureModel::reloadData()
     if(!m_db.isOpen())
     {
         endResetModel();
-        emit structureUpdated();
         return;
     }
 
@@ -169,6 +168,7 @@ void DbStructureModel::reloadData()
     itemAll->setIcon(ColumnName, IconCache::get("database"));
     itemAll->setText(ColumnName, tr("All"));
     itemAll->setText(ColumnObjectType, "database");
+    itemAll->setText(ColumnSchema, "main");
     buildTree(itemAll, "main");
 
     // Add the temporary database as a node if it isn't empty. Make sure it's always second if it exists.
@@ -178,6 +178,7 @@ void DbStructureModel::reloadData()
         itemTemp->setIcon(ColumnName, IconCache::get("database"));
         itemTemp->setText(ColumnName, tr("Temporary"));
         itemTemp->setText(ColumnObjectType, "database");
+        itemTemp->setText(ColumnSchema, "temp");
         buildTree(itemTemp, "temp");
     }
 
@@ -191,13 +192,13 @@ void DbStructureModel::reloadData()
             itemSchema->setIcon(ColumnName, IconCache::get("database"));
             itemSchema->setText(ColumnName, QString::fromStdString(it.first));
             itemSchema->setText(ColumnObjectType, "database");
+            itemSchema->setText(ColumnSchema, QString::fromStdString(it.first));
             buildTree(itemSchema, it.first);
         }
     }
 
     // Refresh the view
     endResetModel();
-    emit structureUpdated();
 }
 
 QStringList DbStructureModel::mimeTypes() const
@@ -341,8 +342,9 @@ void DbStructureModel::buildTree(QTreeWidgetItem* parent, const std::string& sch
     itemTriggers->setText(ColumnName, tr("Triggers (%1)").arg(calc_number_of_objects_by_type(objmap, "trigger")));
     typeToParentItem.insert({"trigger", itemTriggers});
 
-    // Get all database objects and sort them by their name
-    std::map<std::string, sqlb::ObjectPtr> dbobjs;
+    // Get all database objects and sort them by their name.
+    // This needs to be a multimap because SQLite allows views and triggers with the same name which means that names can appear twice.
+    std::multimap<std::string, sqlb::ObjectPtr> dbobjs;
     for(const auto& it : objmap)
         dbobjs.insert({it.second->name(), it.second});
 
